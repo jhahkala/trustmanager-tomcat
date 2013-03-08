@@ -1,0 +1,125 @@
+<!--
+ Copyright (c) Members of the EGEE Collaboration. 2004. See
+ http://www.eu-egee.org/partners/ for details on the copyright holders.
+ 
+ Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ use this file except in compliance with the License. You may obtain a copy of
+ the License at
+ 
+ http://www.apache.org/licenses/LICENSE-2.0
+ 
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ License for the specific language governing permissions and limitations under
+ the License.
+-->
+
+Tomcat configuration:
+
+First of all make sure you have the host credentials! (hostcert.pem 
+and hostkey.pem in /etc/grid-security).
+Also make sure you have all the necessary CA certificates in
+/etc/grid-security/certificates.
+
+Get the trustmanager and util-java rpms from the glite.org web site.
+Get the tomcat rpm from http://pcgmint03.cern.ch/gLite/i386/RPMS.externals/
+
+
+Tomcat config script:
+
+rpm -i trustmanager-x.x.x-x.noarch.rpm \
+glite-security-util-java-0.2.0-2.noarch.rpm
+
+rpm -i ~hahkala/tomcat-5.0.28-2_EGEE.i386.rpm
+
+export CATALINA_HOME=/opt/glite/externals/tomcat-5.0.28/
+
+chmod a+x /opt/glite/etc/glite-security-trustmanager/configure.sh
+
+/opt/glite/etc/glite-security-trustmanager/configure.sh
+
+/opt/glite/externals/tomcat-5.0.28/bin/startup.sh
+
+
+To check that the tomcat starts up nicely you can check the logs:
+less /opt/glite/externals/tomcat-5.0.28/logs/catalina.out
+
+less /opt/glite/externals/tomcat-5.0.28/logs/glite-security-trustmanager.log
+
+If the installation was successful the tm log should be an empty file,
+but it should exist.
+
+To try it out, you have to have your credentials loaded to your browser.
+(openssl pkcs12 -export -in .globus/usercert.pem -inkey .globus/userkey.pem -out user.p12
+and tehn import the keystore to your browser)
+
+To actually try it out point your browser to the https://localhost:8443 
+and click through the probable warnings to get to the tomcat main page.
+
+
+Manual tomcat configuration:
+
+server.xml:
+
+8080 port:
+- comment out the 8080 port definition
+
+8443 port:
+- remove comment around 8443 port definition
+- change clientAuth from false to true
+- add lines (with proper values):
+-------------------------
+               sSLImplementation="org.glite.security.trustmanager.tomcat.TMSSLImplementation"
+               sslCAFiles="/etc/grid-security/certificates/*.0"
+               crlFiles="/etc/grid-security/certificates*.r0"
+               sslCertFile="/etc/grid-security/hostcert.pem"
+               sslKey="/etc/grid-security/hostkey.pem"
+               log4jConfFile="/var/log4j-trustmanager.properties"
+--------------------------
+
+libs:
+- add trustmanager-tomcat.jar and trustmanager.jar to tomcat/server/lib
+- install the log4j and bouncycastle jars
+http://mirror.switch.ch/mirror/apache/dist/logging/log4j/1.2.8/jakarta-log4j-1.2.8.tar.gz
+http://www.bouncycastle.org/download/bcprov-jdk14-124.jar
+
+log4j:
+- setup the log4j file defined in server.xml, for example:
+------------------------------------
+# Copyright (c) 2002 on behalf of the EU DataGrid Project:
+# The European Organization for Nuclear Research (CERN),
+# the Particle Physics and Astronomy Research Council (PPARC),
+# the Helsinki Institute of Physics (HIP) and
+# the Swedish Research Council (SRC). All rights reserved.
+# see LICENSE file for details
+#
+#
+# Configuration file for the logging of
+# org.glite.security.trustmanager
+#
+# Package  : trustmanager
+#
+#############################################################
+
+# the default logger level is set to INFO
+# possible values are: DEBUG, INFO, WARN, ERROR and FATAL
+# (DEBUG shows the maximum information, FATAL least)
+log4j.logger.org.glite.security=INFO, fileout
+
+log4j.appender.fileout=org.apache.log4j.RollingFileAppender
+
+# the OUTPUT FILE for the logging messages
+log4j.appender.fileout.File=${catalina.base}/logs/trustmanager.log
+
+# define max file size for the debug file
+log4j.appender.fileout.MaxFileSize=100KB
+
+# Keep one backup file
+log4j.appender.fileout.MaxBackupIndex=1
+
+log4j.appender.fileout.layout=org.apache.log4j.PatternLayout
+# define the pattern of the messages
+log4j.appender.fileout.layout.ConversionPattern=%d{ISO8601} %-5p [%t] %c{2} %x - %m%n
+# this also outputs the method name, but is very slow
+#log4j.appender.fileout.layout.ConversionPattern=%d{ISO8601} %-5p [%t] %c{2} %M %x - %m%n

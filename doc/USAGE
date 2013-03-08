@@ -1,0 +1,197 @@
+<!--
+ Copyright (c) Members of the EGEE Collaboration. 2004. See
+ http://www.eu-egee.org/partners/ for details on the copyright holders.
+ 
+ Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ use this file except in compliance with the License. You may obtain a copy of
+ the License at
+ 
+ http://www.apache.org/licenses/LICENSE-2.0
+ 
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ License for the specific language governing permissions and limitations under
+ the License.
+-->
+
+
+
+The axis web service integration:
+
+On the service you'll need to include bcprov, log4j, (axis,) 
+security.trustmanager and security.util-java jars to your webapp 
+and call org.glite.security.util.axis.InitSecurityContext.init() 
+in your code to set up the org.glite.security.SecurityContext. 
+After that you can use the org.glite.security.SecurityInfoContainer 
+to get a class that implements SecurityInfo interface and there you 
+can find the cert chain and user DN. the security.util-java rpm 
+contains javadocs for the securitycontext/info stuff.
+
+
+In the client:
+
+You'll have to add the BoncyCastle (bcprov), log4j, trustmanger 
+and util-java jars to the classpath.
+
+After that you will have to set socket factory the Axis uses to create 
+sockets by command line option
+-Daxis.socketSecureFactory=org.glite.security.trustmanager.axis.AXISSocketFactory
+
+You also have to set up the credentials with the following options:
+either using user proxy:
+-DgridProxyFile=/tmp/x509up_u500
+
+or user's real credentials:
+-DsslCertFile=/the/path/to/usercert.pem 
+-DsslKey=/the/path/to/userkey.pem 
+-DsslKeyPasswd=password
+
+These are the minimum settings.
+
+Useful is also the setting:
+-DtrustStoreDir=/etc/grid-security/certificates
+
+Which defines where to get the trustanchors, their crls and namespace definitions.
+
+Another important setting is the crlUpdateInterval. It defines the 
+interval at which the CRL files are polled for changes. Setting it to 0
+will prevent the updater thread being started. It is important on clients
+that use several user credentials for connecting to services to prevent the
+crl updater from being started as it will lead to memory leaks and 
+unnecessary threads being run. On the client side there is relly no need to
+start the updater thread.
+
+
+Note on intervals:
+format: n {s,m,h,d} where n is number and (s=seconds, m=minutes, h=hours, 
+d=days). Only first letter is considered, so for clarity's sake full word
+is recommended. (for example "2 hours")
+
+
+The full list of options:
+
+trustStoreDir
+
+- the directory containing all the CA certificates, CRLs and namespace 
+  definitions.If neither this sslCAStore nor sslCAFiles are defined, 
+  /etc/grid-security/certificates is assumed as the value for this 
+  variable. The directory contains the CA files named as the hex of 
+  4 least significant bytes of the MD5 hash of the CA subject name 
+  in binary ASN1 format and the suffix of a number e.g. 1dab23fe.1. 
+  The CRLs have the same filename except the suffix is prepended by 
+  a 'r' e.g. 1dab23fe.r1 corresponds to the previous CA. The 
+  namespace files are named with the same filename but with a suffix 
+  .namespace or .signin_policy depending on whether the namespace 
+  is defined using International Grid Trust Federation format in 
+  the first case or using globus format in the latter case. The IGTF
+  format is used if both are present.
+
+sslCertFile
+
+- the file containing the local certificate.
+
+sslKey
+
+- The file containing the local private key.
+
+sslKeyPasswd
+
+- The password to access the private key if it is encrypted.
+
+gridProxyFile 
+
+- Defines the file that contains the gridproxy to use for authentication. 
+  Also used for kerberos credentials where the user cert and key are in 
+  the same file in pem format.
+
+credentialsUpdateInterval
+
+- The time interval used to reload the local credentials from filesystem 
+  into memory. (default 0 (=never))
+
+sslCertStore
+
+- The keystore that holds the local credentials.
+
+sslCertStoreType
+
+- The keystore type "JKS" and "PKCS12" are supported (default "JKS")
+
+sslCertStorePasswd
+
+- The password to use when accessing the keystore
+
+sslCAFiles (deprecated)
+
+- The files containing the CA certificates
+
+sslCAStore
+
+- The keystore that holds the CA certificates
+
+sslCAStoreType
+
+- The keystore type of the CA keystore "JKS" and "PKCS12" are supported 
+  (default "JKS")
+
+sslCAStorePasswd
+
+- The password to use to access the CA keystore
+
+crlFiles (deprecated)
+
+- the CRL files to use (default /etc/grid-security/certificates/*.r0)
+
+crlEnabled (deprecated, assumed true)
+
+- defines whether the system tries to use CRLs (default true)
+
+crlRequired
+
+- defines what happens when CRL is not fournd for a CA (default true)
+  - if true, all certificates from a CA that doesn't have a valid CRL 
+    are rejected
+  - if false, all certificates from a CA that doesn't have a valid CRL
+    are accepted
+
+crlUpdateInterval
+
+- the interval to poll updated of the CRL, CA or namespace files from 
+  the filesystem and reaload them into the memory cache in case of changes.
+  If the interval is set to 0 the update thread is not started.
+  (default "0 hours")
+
+log4jConfFile
+
+- The file to use to configure the log4j logging facility.
+
+logFile
+
+- The file to log to. To be used instead log4jConfFile if defaults are fine,
+  but log file needs to be configured.
+
+sslProtocol
+
+- The ssl protocol to use (default "TLSv1") (SSLv3, SSLv2, SSLv2HELLO 
+  also supported)
+
+sslConfigFile
+
+- Given just this option, the actual configuration options are read from 
+  this file.
+
+sslTimeout
+
+- defines the read timeout in milliseconds
+
+sslConnectTimeout
+
+- defines the connect timeout in milliseconds
+
+internalOverrideExpirationCheck
+
+- only for testing, overrides the expiration check when loading credentials.
+
+
+

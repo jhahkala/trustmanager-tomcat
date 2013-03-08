@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+Copyright (c) Members of the EGEE Collaboration. 2004. 
+See http://www.eu-egee.org/partners/ for details on the copyright
+holders.  
+
+Licensed under the Apache License, Version 2.0 (the "License"); 
+you may not use this file except in compliance with the License. 
+You may obtain a copy of the License at 
+
+    http://www.apache.org/licenses/LICENSE-2.0 
+
+Unless required by applicable law or agreed to in writing, software 
+distributed under the License is distributed on an "AS IS" BASIS, 
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+See the License for the specific language governing permissions and 
+limitations under the License.
+	
+	Authors: Joachim Flammer <Joachim.Flammer@Cern.ch>
+                 Joni Hahkala <joni.hahkala@cern.ch>	
+
+-->
+
+<project name="trustmanager-tomcat" default="dist">
+
+	<property name="jdk.target.version.force" value="1.5" />
+
+	<property name="workspace.dir" value=".." />
+	<property name="project-name" value="trustmanager-tomcat" />
+	<property name="jar.name" value="${project-name}" />
+
+	<property name="stage" value="${workspace.dir}/stage" />
+	<property name="java.share.path" value="/usr/share/java" />
+	<property name="stage.java.share.path" value="${stage}${java.share.path}" />
+	
+	<property name="prefix" value="tmp-prefix" />
+	<property name="package.prefix" value="${prefix}" />
+	<property name="package.java.share.path" value="${package.prefix}/usr/share/java" />
+	<property name="package.javadoc.path" value="${package.prefix}/usr/share/doc/${project-name}/html" />
+	<property name="package.doc.path" value="${package.prefix}/usr/share/doc/${project-name}" />
+	<property name="package.templates.path" value="${package.prefix}/var/lib/${project-name}" />
+	<property name="build.dir" value="build"/>
+
+	<!-- set the default locations, setting these during call to ant will override these -->
+    <property name="commons-logging.location" value="${java.share.path}"/>
+    <property name="tomcat.location" value="${java.share.path}"/>
+
+	<property name="trustmanager.location" value="${stage.java.share.path}"/>
+
+	<target name="init" description="Module specific initialization tasks">
+
+        <echo message="commons-logging.location     =${commons-logging.location}"/>
+        <echo message="tomcat.location              =${tomcat.location}"/>
+        <echo message="trustmanager.location        =${trustmanager.location}"/>
+        <echo message="system java share dir:"/>
+ 
+    	<exec executable="ls" failifexecutionfails="false" failonerror="false">
+    		<arg value="-al"/>
+    		<arg value="${java.share.path}"/>
+    	</exec>
+
+        <echo message="stage java share dir:"/>
+    	<exec executable="ls" failifexecutionfails="false" failonerror="false">
+    		<arg value="-al"/>
+    		<arg value="${stage.java.share.path}"/>
+    	</exec>
+
+		<!-- Set compile classpaths -->
+		<path id="compile.classpath">
+
+			<fileset dir="${commons-logging.location}">
+				<include name="**/*commons-logging*.jar" />
+			</fileset>
+			<fileset dir="${tomcat.location}">
+				<!-- enough for tomcat6 -->
+				<include name="**/*coyote*.jar" />
+				<!-- add for tomcat5 -->
+				<include name="**/*tomcat-util*.jar" />
+			</fileset>
+			<pathelement location="${trustmanager.location}/trustmanager.jar" />
+		</path>
+
+	</target>
+
+	<target name="compile" depends="init">
+		<mkdir dir="build.dir"/>
+		<javac srcdir="src" destdir="build.dir" deprecation="false" failonerror="true" debug="true" target="${jdk.target.version.force}">
+			<classpath refid="compile.classpath" />
+		</javac>
+
+		<copy todir="build.dir">
+			<fileset dir="src">
+				<include name="**/*.properties" />
+			</fileset>
+		</copy>
+
+		<mkdir dir="lib"/>
+		<jar destfile="lib/${jar.name}.jar"
+		     basedir="build.dir"
+		     includes="**/*.class,**/*.properties" 
+			 index="true"/>
+		<mkdir dir="${package.java.share.path}"/>
+		<copy todir="${package.java.share.path}">
+			<fileset dir="lib">
+				<include name="**/*.jar" />
+			</fileset>
+		</copy>
+
+	</target>
+
+	<target name="compile-extcp">
+
+		<mkdir dir="build.dir"/>
+		<javac srcdir="src" destdir="build.dir" deprecation="false" failonerror="true" debug="true" target="${jdk.target.version.force}">
+		</javac>
+
+		<copy todir="build.dir">
+			<fileset dir="src">
+				<include name="**/*.properties" />
+			</fileset>
+		</copy>
+
+		<mkdir dir="lib"/>
+		<jar destfile="lib/$jar.name}.jar"
+		     basedir="build.dir"
+		     includes="**/*.class,**/*.properties" index="true"/>
+		<mkdir dir="${package.java.share.path}"/>
+		<copy todir="${package.java.share.path}">
+			<fileset dir="lib">
+				<include name="**/*.jar" />
+			</fileset>
+		</copy>
+
+	</target>
+
+	<target name="clean">
+		<delete dir="${package.prefix}"/>
+		<delete dir="build.dir"/>
+		<delete dir="lib" />
+
+	</target>
+
+	<target name="doc" description="Build Javadoc">
+
+		<mkdir dir="${package.javadoc.path}" />
+
+		<javadoc packagenames="org.glite.security.*" classpathref="compile.classpath" sourcepath="src" destdir="${package.javadoc.path}" author="true" version="true" use="true" access="public" />
+		<copy todir="${package.doc.path}">
+			<fileset dir="doc">
+				<include name="**/*" />
+			</fileset>
+		</copy>
+	</target>
+
+	<target name="doc-extcp" description="Build Javadoc">
+
+		<mkdir dir="${package.javadoc.path}" />
+
+		<javadoc packagenames="org.glite.security.*" sourcepath="src" destdir="${package.javadoc.path}" author="true" version="true" use="true" access="public" />
+		<copy todir="${package.doc.path}">
+			<fileset dir="doc">
+				<include name="**/*" />
+			</fileset>
+		</copy>
+	</target>
+
+	<target name="dist" depends="compile, doc, localdistbin, permissions">
+	</target>
+
+	<target name="localdistbin">
+		<mkdir dir="${package.templates.path}" />
+		<copy toDir="${package.templates.path}">
+			<fileset dir="config">
+				<include name="*.properties" />
+				<include name="configure.sh" />
+				<include name="*.template" />
+			</fileset>
+		</copy>
+	</target>
+
+	<target name="permissions" depends="localdistbin" unless="isWindows">
+		<echo message="Non-windows system, setting executable bit for the shell scripts" />
+		<chmod dir="${package.templates.path}"
+                       perm="ug+rx"
+                       includes="**/*.sh" />
+	</target>
+
+	<target name="stage" depends="dist">
+		<mkdir dir="${stage.java.share.path}"/>
+		<copy todir="${stage.java.share.path}">
+			<fileset dir="lib">
+				<include name="**/*.jar" />
+			</fileset>
+		</copy>
+	</target>
+
+</project>
